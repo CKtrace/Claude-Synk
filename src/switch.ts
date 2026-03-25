@@ -27,6 +27,7 @@ export interface SwitchOptions {
   note?: string;
   skipSnapshot?: boolean;
   skipHandoff?: boolean;
+  all?: boolean;
 }
 
 export interface SwitchResult {
@@ -65,14 +66,26 @@ export function switchAccount(opts: SwitchOptions): SwitchResult {
   // Step 1: Save snapshot of current work
   let snapshotId: string | undefined;
   if (!opts.skipSnapshot) {
-    console.log(chalk.blue('\n  [1/4] Saving work snapshot...'));
-    const snapshot = createSnapshot({
-      projectDir: opts.projectDir,
-      summary: opts.summary,
-      todos: opts.todos,
-      customNote: opts.note,
-    });
-    snapshotId = snapshot.id;
+    if (opts.all && config.workspaces.length > 0) {
+      console.log(chalk.blue(`\n  [1/4] Saving snapshots for ${config.workspaces.length} workspace(s)...`));
+      for (const ws of config.workspaces) {
+        console.log(chalk.gray(`    → ${ws.name} (${ws.path})`));
+        createSnapshot({
+          projectDir: ws.path,
+          summary: opts.summary,
+          customNote: opts.note,
+        });
+      }
+    } else {
+      console.log(chalk.blue('\n  [1/4] Saving work snapshot...'));
+      const snapshot = createSnapshot({
+        projectDir: opts.projectDir,
+        summary: opts.summary,
+        todos: opts.todos,
+        customNote: opts.note,
+      });
+      snapshotId = snapshot.id;
+    }
   }
 
   // Step 2: Backup current auth
@@ -108,11 +121,23 @@ export function switchAccount(opts: SwitchOptions): SwitchResult {
 
   // Step 4: Inject handoff into CLAUDE.md
   if (!opts.skipHandoff) {
-    console.log(chalk.blue('  [4/4] Injecting handoff into CLAUDE.md...'));
-    const latestSnapshot = getLatestSnapshot(opts.projectDir);
-    if (latestSnapshot) {
-      const handoffContent = buildHandoff(latestSnapshot);
-      injectHandoff(opts.projectDir, handoffContent);
+    if (opts.all && config.workspaces.length > 0) {
+      console.log(chalk.blue(`  [4/4] Injecting handoffs for ${config.workspaces.length} workspace(s)...`));
+      for (const ws of config.workspaces) {
+        const snap = getLatestSnapshot(ws.path);
+        if (snap) {
+          const handoffContent = buildHandoff(snap);
+          injectHandoff(ws.path, handoffContent);
+          console.log(chalk.gray(`    → ${ws.name}`));
+        }
+      }
+    } else {
+      console.log(chalk.blue('  [4/4] Injecting handoff into CLAUDE.md...'));
+      const latestSnapshot = getLatestSnapshot(opts.projectDir);
+      if (latestSnapshot) {
+        const handoffContent = buildHandoff(latestSnapshot);
+        injectHandoff(opts.projectDir, handoffContent);
+      }
     }
   } else {
     console.log(chalk.gray('  [4/4] Skipping handoff injection.'));

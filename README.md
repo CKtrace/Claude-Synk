@@ -79,6 +79,91 @@ Claude will automatically read the handoff from `CLAUDE.md` and continue your wo
 claude-synk clean
 ```
 
+## Multi-Project Workspace
+
+If you're working on multiple projects at once, register them as workspaces to snapshot and restore all at once.
+
+```bash
+# Register workspaces
+claude-synk workspace add ~/projects/frontend
+claude-synk workspace add ~/projects/backend
+claude-synk workspace add ~/projects/mobile
+
+# List registered workspaces
+claude-synk workspace list
+
+# Switch account — snapshots ALL workspaces at once
+claude-synk switch work --all -m "frontend: auth UI done, backend: API halfway"
+```
+
+When you use `--all`, Claude Synk will:
+1. Save a snapshot for **every registered workspace**
+2. Switch credentials
+3. Inject handoffs into **every workspace's CLAUDE.md**
+
+So no matter which project you open next in VSCode, Claude picks up where you left off.
+
+## VSCode Workflow Example
+
+Here's a real-world example of how it works in VSCode:
+
+### Situation
+You're building a web app with 2 repos. Token limit hit on Account A.
+
+```
+~/projects/frontend/   ← React app, working on login page
+~/projects/backend/    ← Express API, adding auth endpoints
+```
+
+### Step 1: Register workspaces (one-time)
+
+Open VSCode terminal:
+
+```bash
+claude-synk workspace add ~/projects/frontend
+claude-synk workspace add ~/projects/backend
+```
+
+### Step 2: Token runs out → Switch
+
+```bash
+claude-synk switch account-B --all -m "frontend: login form done, need signup. backend: /auth/login done, need /auth/register"
+```
+
+### Step 3: Open any project in VSCode → Start new Claude Code session
+
+Claude reads CLAUDE.md automatically and sees:
+
+```markdown
+## Previous Session Handoff (by Claude Synk)
+
+**Account:** account-A
+**Branch:** feature/auth
+
+### Work Summary
+frontend: login form done, need signup. backend: /auth/login done, need /auth/register
+
+### Changed Files
+- src/components/LoginForm.tsx
+- src/pages/Login.tsx
+...
+```
+
+### Step 4: Claude continues your work
+
+You just say:
+
+> "Continue where I left off"
+
+Claude already knows what you were doing, which files you changed, and what's next. No re-explaining needed.
+
+### Step 5: Done? Clean up
+
+```bash
+claude-synk clean -d ~/projects/frontend
+claude-synk clean -d ~/projects/backend
+```
+
 ## Commands
 
 | Command | Alias | Description |
@@ -87,7 +172,11 @@ claude-synk clean
 | `account list` | `account ls` | List all registered accounts |
 | `account remove <name>` | `account rm` | Remove an account |
 | `account backup <name>` | | Backup current credentials for an account |
+| `workspace add <path>` | `ws add` | Register a project workspace |
+| `workspace list` | `ws ls` | List all registered workspaces |
+| `workspace remove <name>` | `ws rm` | Remove a workspace |
 | `switch <account>` | | Switch to another account with auto-snapshot |
+| `switch <account> --all` | | Switch and snapshot ALL workspaces |
 | `quick` | `q` | Interactive switch with prompts |
 | `snapshot` | | Save a work snapshot without switching |
 | `restore` | | Inject latest snapshot into CLAUDE.md |
@@ -106,6 +195,7 @@ Options:
   -d, --dir <dir>       Project directory (default: current dir)
   -m, --message <msg>   Summary of current work
   -n, --note <note>     Note for next session
+  -a, --all             Snapshot and restore all registered workspaces
   --no-snapshot          Skip saving snapshot
   --no-handoff          Skip injecting handoff
 ```

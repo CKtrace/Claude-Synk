@@ -79,6 +79,86 @@ Claude가 `CLAUDE.md`의 핸드오프를 자동으로 읽고 작업을 이어갑
 claude-synk clean
 ```
 
+## 멀티 프로젝트 워크스페이스
+
+여러 프로젝트를 동시에 작업 중이라면, 워크스페이스로 등록해서 한번에 스냅샷/복원할 수 있습니다.
+
+```bash
+# 워크스페이스 등록
+claude-synk workspace add ~/projects/frontend
+claude-synk workspace add ~/projects/backend
+
+# 등록된 워크스페이스 확인
+claude-synk workspace list
+
+# 계정 전환 — 모든 워크스페이스 한번에 스냅샷
+claude-synk switch work --all -m "frontend: 로그인 UI 완료, backend: API 절반"
+```
+
+`--all` 옵션 사용 시:
+1. **등록된 모든 워크스페이스**의 스냅샷 저장
+2. 인증 정보 교체
+3. **모든 워크스페이스의 CLAUDE.md**에 핸드오프 주입
+
+어떤 프로젝트를 열든 Claude가 이전 작업을 이어갑니다.
+
+## VSCode 사용 예시
+
+### 상황
+웹앱을 2개 레포로 개발 중. 계정 A의 토큰이 다 됨.
+
+```
+~/projects/frontend/   ← React 앱, 로그인 페이지 작업 중
+~/projects/backend/    ← Express API, 인증 엔드포인트 추가 중
+```
+
+### Step 1: 워크스페이스 등록 (최초 1회)
+
+VSCode 터미널에서:
+
+```bash
+claude-synk workspace add ~/projects/frontend
+claude-synk workspace add ~/projects/backend
+```
+
+### Step 2: 토큰 소진 → 전환
+
+```bash
+claude-synk switch 계정B --all -m "frontend: 로그인 폼 완성, 회원가입 필요. backend: /auth/login 완료, /auth/register 필요"
+```
+
+### Step 3: VSCode에서 프로젝트 열기 → 새 Claude Code 세션 시작
+
+Claude가 CLAUDE.md를 자동으로 읽고 이런 내용을 봅니다:
+
+```markdown
+## Previous Session Handoff (by Claude Synk)
+
+**Account:** 계정A
+**Branch:** feature/auth
+
+### Work Summary
+frontend: 로그인 폼 완성, 회원가입 필요. backend: /auth/login 완료, /auth/register 필요
+
+### Changed Files
+- src/components/LoginForm.tsx
+- src/pages/Login.tsx
+...
+```
+
+### Step 4: Claude에게 말하기
+
+> "이전 작업 이어서 해줘"
+
+Claude가 이미 무엇을 하고 있었는지, 어떤 파일을 수정했는지, 다음에 뭘 해야 하는지 알고 있습니다. 처음부터 다시 설명할 필요 없음.
+
+### Step 5: 작업 완료 후 정리
+
+```bash
+claude-synk clean -d ~/projects/frontend
+claude-synk clean -d ~/projects/backend
+```
+
 ## 명령어
 
 | 명령어 | 별칭 | 설명 |
@@ -87,7 +167,11 @@ claude-synk clean
 | `account list` | `account ls` | 등록된 계정 목록 |
 | `account remove <이름>` | `account rm` | 계정 제거 |
 | `account backup <이름>` | | 현재 인증 정보 백업 |
+| `workspace add <경로>` | `ws add` | 프로젝트 워크스페이스 등록 |
+| `workspace list` | `ws ls` | 등록된 워크스페이스 목록 |
+| `workspace remove <이름>` | `ws rm` | 워크스페이스 제거 |
 | `switch <계정>` | | 계정 전환 (자동 스냅샷) |
+| `switch <계정> --all` | | 전환 + 모든 워크스페이스 스냅샷 |
 | `quick` | `q` | 대화형 전환 |
 | `snapshot` | | 전환 없이 스냅샷만 저장 |
 | `restore` | | 최신 스냅샷을 CLAUDE.md에 주입 |

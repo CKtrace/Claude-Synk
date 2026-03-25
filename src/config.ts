@@ -13,9 +13,16 @@ export interface Account {
   addedAt: string;
 }
 
+export interface Workspace {
+  name: string;
+  path: string;
+  addedAt: string;
+}
+
 export interface SynkConfig {
   activeAccount: string | null;
   accounts: Account[];
+  workspaces: Workspace[];
   encryptionKey: string;
 }
 
@@ -67,6 +74,7 @@ export function loadConfig(): SynkConfig {
     const defaultConfig: SynkConfig = {
       activeAccount: null,
       accounts: [],
+      workspaces: [],
       encryptionKey: generateEncryptionKey(),
     };
     fs.writeFileSync(CONFIG_FILE, JSON.stringify(defaultConfig, null, 2), { mode: 0o600 });

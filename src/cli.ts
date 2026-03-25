@@ -3,6 +3,7 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
+import * as path from 'path';
 import {
   loadConfig,
   saveConfig,
@@ -10,6 +11,7 @@ import {
   getActiveAccount,
   encrypt,
   Account,
+  Workspace,
   paths,
 } from './config';
 import {
@@ -178,6 +180,76 @@ program
       })
   );
 
+// ─── workspace ──────────────────────────────────────────────────────
+
+program
+  .command('workspace')
+  .alias('ws')
+  .description('Manage project workspaces for multi-project switching')
+  .addCommand(
+    new Command('add')
+      .description('Register a project workspace')
+      .argument('<path>', 'Project directory path')
+      .option('-n, --name <name>', 'Workspace name (default: folder name)')
+      .action((wsPath: string, opts: { name?: string }) => {
+        const config = loadConfig();
+        const resolvedPath = path.resolve(wsPath);
+        const name = opts.name ?? path.basename(resolvedPath);
+
+        if (config.workspaces.find(w => w.path === resolvedPath)) {
+          console.log(chalk.red(`\n  Workspace "${resolvedPath}" already registered.\n`));
+          process.exit(1);
+        }
+
+        const workspace: Workspace = {
+          name,
+          path: resolvedPath,
+          addedAt: new Date().toISOString(),
+        };
+
+        config.workspaces.push(workspace);
+        saveConfig(config);
+        console.log(chalk.green(`\n  Workspace "${name}" added (${resolvedPath})\n`));
+      })
+  )
+  .addCommand(
+    new Command('list')
+      .description('List all registered workspaces')
+      .alias('ls')
+      .action(() => {
+        const config = loadConfig();
+        if (config.workspaces.length === 0) {
+          console.log(chalk.yellow('\n  No workspaces registered.'));
+          console.log(chalk.gray('  Add one with: claude-synk workspace add <path>\n'));
+          return;
+        }
+
+        console.log(chalk.bold('\n  Registered Workspaces\n'));
+        for (const ws of config.workspaces) {
+          const branch = isGitRepo(ws.path) ? chalk.cyan(` [${getGitBranch(ws.path)}]`) : '';
+          console.log(`    ${chalk.white(ws.name)}${branch}`);
+          console.log(chalk.gray(`      ${ws.path}\n`));
+        }
+      })
+  )
+  .addCommand(
+    new Command('remove')
+      .description('Remove a workspace')
+      .alias('rm')
+      .argument('<name>', 'Workspace name to remove')
+      .action((name: string) => {
+        const config = loadConfig();
+        const idx = config.workspaces.findIndex(w => w.name === name);
+        if (idx === -1) {
+          console.log(chalk.red(`\n  Workspace "${name}" not found.\n`));
+          process.exit(1);
+        }
+        config.workspaces.splice(idx, 1);
+        saveConfig(config);
+        console.log(chalk.green(`\n  Workspace "${name}" removed.\n`));
+      })
+  );
+
 // ─── switch ─────────────────────────────────────────────────────────
 
 program
@@ -187,12 +259,14 @@ program
   .option('-d, --dir <dir>', 'Project directory', process.cwd())
   .option('-m, --message <msg>', 'Summary of current work')
   .option('-n, --note <note>', 'Custom note for handoff')
+  .option('-a, --all', 'Snapshot and restore all registered workspaces')
   .option('--no-snapshot', 'Skip saving snapshot')
   .option('--no-handoff', 'Skip injecting handoff into CLAUDE.md')
   .action((account: string, opts: {
     dir: string;
     message?: string;
     note?: string;
+    all?: boolean;
     snapshot: boolean;
     handoff: boolean;
   }) => {
@@ -203,6 +277,7 @@ program
       targetAccount: account,
       summary: opts.message,
       note: opts.note,
+      all: opts.all,
       skipSnapshot: !opts.snapshot,
       skipHandoff: !opts.handoff,
     });
