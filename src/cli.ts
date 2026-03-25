@@ -193,8 +193,15 @@ program
       .option('-n, --name <name>', 'Workspace name (default: folder name)')
       .action((wsPath: string, opts: { name?: string }) => {
         const config = loadConfig();
+        const fs = require('fs');
         const resolvedPath = path.resolve(wsPath);
         const name = opts.name ?? path.basename(resolvedPath);
+
+        if (!fs.existsSync(resolvedPath)) {
+          console.log(chalk.red(`\n  Path does not exist: ${resolvedPath}`));
+          console.log(chalk.gray(`  Please check the path and try again.\n`));
+          process.exit(1);
+        }
 
         if (config.workspaces.find(w => w.path === resolvedPath)) {
           console.log(chalk.red(`\n  Workspace "${resolvedPath}" already registered.\n`));

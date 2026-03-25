@@ -81,7 +81,13 @@ export function loadConfig(): SynkConfig {
     return defaultConfig;
   }
   const raw = fs.readFileSync(CONFIG_FILE, 'utf-8');
-  return JSON.parse(raw) as SynkConfig;
+  const config = JSON.parse(raw) as SynkConfig;
+  // Migrate: add workspaces if missing (from older config)
+  if (!config.workspaces) {
+    config.workspaces = [];
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), { mode: 0o600 });
+  }
+  return config;
 }
 
 export function saveConfig(config: SynkConfig): void {
