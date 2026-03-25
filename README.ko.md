@@ -36,7 +36,11 @@ $ claude-synk switch work-account
 ## 설치
 
 ```bash
-npm install -g claude-synk
+git clone https://github.com/CKtrace/Claude-Synk.git
+cd Claude-Synk
+npm install
+npm run build
+npm install -g .
 ```
 
 ## 빠른 시작
